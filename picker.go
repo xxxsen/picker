@@ -195,7 +195,7 @@ func (p *pickerImpl[T]) createPlugin(ct IContainer, plg *PluginConfig) (err erro
 	if err != nil {
 		return fmt.Errorf("eval plugin code failed, err:%w", err)
 	}
-	v, err := p.i.Eval(fmt.Sprintf("%s.%s", args.Package, "Register"))
+	v, err := p.i.Eval(fmt.Sprintf("%s.%s", args.Package, "Register_"))
 	if err != nil {
 		return fmt.Errorf("eval register func failed, err:%w", err)
 	}

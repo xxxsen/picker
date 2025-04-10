@@ -20,7 +20,7 @@ func Fn{{.Name}}() interface{} {
 	return {{.Function}}
 }
 
-func Register(ct host.IContainer) error {
+func Register_(ct host.IContainer) error {
 	return ct.Register("{{.Name}}", Fn{{.Name}}())
 }
 `
