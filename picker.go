@@ -32,6 +32,7 @@ type pickerImpl[T any] struct {
 	i   *interp.Interpreter
 	m   map[string]T
 	lst []string
+	c   *config
 }
 
 func checkIsTemplateTypeFunction[T any]() bool {
@@ -40,47 +41,65 @@ func checkIsTemplateTypeFunction[T any]() bool {
 	return t.Kind() == reflect.Func
 }
 
-func Load[T any](ps *Plugins) (IPicker[T], error) {
+func Load[T any](ps *Plugins, opts ...Option) (IPicker[T], error) {
 	if !checkIsTemplateTypeFunction[T]() {
 		return nil, fmt.Errorf("template type should be function")
 	}
+	c := applyOpts(opts...)
 	pk := &pickerImpl[T]{
 		i: interp.New(interp.Options{}),
 		m: make(map[string]T),
+		c: c,
 	}
-	pk.i.Use(stdlib.Symbols)
+	if err := pk.i.Use(stdlib.Symbols); err != nil {
+		return nil, fmt.Errorf("use stdlib failed, err:%w", err)
+	}
+
 	host := make(map[string]map[string]reflect.Value)
 	host["host/host"] = make(map[string]reflect.Value)
 	host["host/host"]["IContainer"] = reflect.ValueOf((*IContainer)(nil))
-	pk.i.Use(host)
+	for name, obj := range c.objs {
+		host["host/host"][name] = reflect.Indirect(reflect.ValueOf(obj))
+	}
+	if err := pk.i.Use(host); err != nil {
+		return nil, fmt.Errorf("use custom object failed, err:%w", err)
+	}
 	if err := pk.init(ps); err != nil {
 		return nil, err
 	}
 	return pk, nil
 }
 
-func ParseData[T any](data []byte, dec DecoderFunc) (IPicker[T], error) {
+func ParseData[T any](data []byte, dec DecoderFunc, opts ...Option) (IPicker[T], error) {
 	ps := &Plugins{}
 	if err := dec(data, ps); err != nil {
 		return nil, fmt.Errorf("decode data failed, err:%w", err)
 	}
-	return Load[T](ps)
+	return Load[T](ps, opts...)
 }
 
-func ParseYamlFile[T any](f string) (IPicker[T], error) {
+func ParseYamlFile[T any](f string, opts ...Option) (IPicker[T], error) {
 	raw, err := os.ReadFile(f)
 	if err != nil {
 		return nil, err
 	}
-	return ParseData[T](raw, YamlDecoder)
+	return ParseData[T](raw, YamlDecoder, opts...)
 }
 
-func ParseJsonFile[T any](f string) (IPicker[T], error) {
+func ParseJsonFile[T any](f string, opts ...Option) (IPicker[T], error) {
 	raw, err := os.ReadFile(f)
 	if err != nil {
 		return nil, err
 	}
-	return ParseData[T](raw, JsonDecoder)
+	return ParseData[T](raw, JsonDecoder, opts...)
+}
+
+func (p *pickerImpl[T]) wrapFunc(t T) T {
+	if !p.c.safeWrap {
+		return t
+	}
+	//TODO: impl it
+	return t
 }
 
 func (p *pickerImpl[T]) init(ps *Plugins) error {
@@ -101,7 +120,7 @@ func (p *pickerImpl[T]) init(ps *Plugins) error {
 		if !ok {
 			return fmt.Errorf("plugin:%s function type not match", k)
 		}
-		p.m[k] = vt
+		p.m[k] = p.wrapFunc(vt)
 	}
 	p.lst = lst
 	return nil
