@@ -54,20 +54,41 @@ func Load[T any](ps *Plugins, opts ...Option) (IPicker[T], error) {
 	if err := pk.i.Use(stdlib.Symbols); err != nil {
 		return nil, fmt.Errorf("use stdlib failed, err:%w", err)
 	}
-
-	host := make(map[string]map[string]reflect.Value)
-	host["host/host"] = make(map[string]reflect.Value)
-	host["host/host"]["IContainer"] = reflect.ValueOf((*IContainer)(nil))
-	for name, obj := range c.objs {
-		host["host/host"][name] = reflect.Indirect(reflect.ValueOf(obj))
+	ct, err := buildInjectObjs(c.objs)
+	if err != nil {
+		return nil, fmt.Errorf("build inject object failed, err:%w", err)
 	}
-	if err := pk.i.Use(host); err != nil {
+	if err := pk.i.Use(ct); err != nil {
 		return nil, fmt.Errorf("use custom object failed, err:%w", err)
 	}
 	if err := pk.init(ps); err != nil {
 		return nil, err
 	}
 	return pk, nil
+}
+
+func buildInjectObjs(objs map[string]interface{}) (map[string]map[string]reflect.Value, error) {
+	ct := make(map[string]map[string]reflect.Value)
+	ct["host/host"] = make(map[string]reflect.Value)
+	ct["host/host"]["IContainer"] = reflect.ValueOf((*IContainer)(nil))
+	for name, obj := range objs {
+		if !strings.Contains(name, "/") { //没有pkg的, 自动注册到 host 中
+			ct["host/host"][name] = reflect.Indirect(reflect.ValueOf(obj))
+			continue
+		}
+		//如果存在pkg, 那么它的格式必定为 `$pkg_name/$object_name`, 仅能有一个`/`
+		parts := strings.Split(name, "/")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("custom object path should contains at most one slash, data:%s", name)
+		}
+		pkg := parts[0] + "/" + parts[0] //yaegi中, 任意一个pkg都得写成 `$pkg/$pkg` 的形式
+		if _, ok := ct[pkg]; !ok {
+			ct[pkg] = make(map[string]reflect.Value)
+		}
+		name = parts[1]
+		ct[pkg][name] = reflect.Indirect(reflect.ValueOf(obj))
+	}
+	return ct, nil
 }
 
 func ParseData[T any](data []byte, dec DecoderFunc, opts ...Option) (IPicker[T], error) {

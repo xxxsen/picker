@@ -121,5 +121,31 @@ func TestCutsomObject(t *testing.T) {
 	fn(context.Background(), in)
 	t.Logf("in.V:%s", in.V)
 	assert.Equal(t, "hello world", in.V)
+}
 
+func TestCustomObjectWithPkg(t *testing.T) {
+	pgs := &Plugins{
+		Plugins: []*PluginConfig{
+			{
+				Name:     "p1",
+				Import:   "cstpkg",
+				Function: `func(ctx context.Context, in *cstpkg.TestData) {in.V = "hello world"}`,
+			},
+		},
+	}
+	pk, err := Load[func(ctx context.Context, in *TestData)](pgs,
+		WithCustomObject(
+			map[string]interface{}{
+				"cstpkg/TestData": &TestData{},
+			},
+		),
+	)
+	assert.NoError(t, err)
+	fn, _ := pk.Get("p1")
+	in := &TestData{
+		V: "123",
+	}
+	fn(context.Background(), in)
+	t.Logf("in.V:%s", in.V)
+	assert.Equal(t, "hello world", in.V)
 }
