@@ -12,7 +12,6 @@ var (
 plugins:
   - name: testplugin
     import: |
-      context
       fmt
     define: |
       var a = 1

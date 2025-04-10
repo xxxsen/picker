@@ -8,7 +8,6 @@ import (
 const pluginTemplate = `package {{.Package}}
 
 import (
-    "host"
 {{- range .Import }}
     "{{.}}"
 {{- end }}
