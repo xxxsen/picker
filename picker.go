@@ -11,7 +11,6 @@ import (
 	"github.com/thoas/go-funk"
 	"github.com/traefik/yaegi/interp"
 	"github.com/traefik/yaegi/stdlib"
-	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -60,20 +59,28 @@ func Load[T any](ps *Plugins) (IPicker[T], error) {
 	return pk, nil
 }
 
-func ParseData[T any](data []byte) (IPicker[T], error) {
+func ParseData[T any](data []byte, dec DecoderFunc) (IPicker[T], error) {
 	ps := &Plugins{}
-	if err := yaml.Unmarshal(data, ps); err != nil {
-		return nil, err
+	if err := dec(data, ps); err != nil {
+		return nil, fmt.Errorf("decode data failed, err:%w", err)
 	}
 	return Load[T](ps)
 }
 
-func ParseFile[T any](f string) (IPicker[T], error) {
+func ParseYamlFile[T any](f string) (IPicker[T], error) {
 	raw, err := os.ReadFile(f)
 	if err != nil {
 		return nil, err
 	}
-	return ParseData[T](raw)
+	return ParseData[T](raw, YamlDecoder)
+}
+
+func ParseJsonFile[T any](f string) (IPicker[T], error) {
+	raw, err := os.ReadFile(f)
+	if err != nil {
+		return nil, err
+	}
+	return ParseData[T](raw, JsonDecoder)
 }
 
 func (p *pickerImpl[T]) init(ps *Plugins) error {

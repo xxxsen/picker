@@ -25,7 +25,7 @@ plugins:
 )
 
 func TestParseData(t *testing.T) {
-	pk, err := ParseData[func(ctx context.Context, args interface{}) error]([]byte(testYamlFile))
+	pk, err := ParseData[func(ctx context.Context, args interface{}) error]([]byte(testYamlFile), YamlDecoder)
 	assert.NoError(t, err)
 	assert.NotNil(t, pk)
 	fn, err := pk.Get("testplugin")
@@ -67,5 +67,27 @@ func TestExecPlugin(t *testing.T) {
 		fn(context.Background())
 	}
 	assert.Equal(t, 3, len(pk.List()))
+}
 
+func TestJson(t *testing.T) {
+	code := `{
+		"plugins": [
+			{
+				"name": "testjson",
+				"import": "fmt",
+				"define": "var a = 1\nvar b = 2",
+				"function": "func(ctx context.Context, args interface{}) error {fmt.Printf(\"hello json\")\n\treturn nil\n}"
+			}
+		]
+	}`
+	pk, err := ParseData[func(ctx context.Context, args interface{}) error]([]byte(code), JsonDecoder)
+	assert.NoError(t, err)
+	assert.NotNil(t, pk)
+	fn, err := pk.Get("testjson")
+	assert.NoError(t, err)
+	err = fn(context.Background(), nil)
+	assert.NoError(t, err)
+	fns := pk.List()
+	t.Logf("fns:%v", fns)
+	assert.Equal(t, 1, len(fns))
 }
