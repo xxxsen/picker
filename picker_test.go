@@ -177,3 +177,36 @@ func TestWithSafeWrap(t *testing.T) {
 	t.Logf("panic err:%v", err)
 	assert.Equal(t, "", data)
 }
+
+func BenchmarkFuncCallWithYaegi(b *testing.B) {
+	//BenchmarkFuncCallWithYaegi-12            1000000              1728 ns/op             552 B/op         15 allocs/op
+	pgs := &Plugins{
+		Plugins: []*PluginConfig{
+			{
+				Name:     "normal",
+				Function: `func(ctx context.Context) (int, error) {return 123, nil}`,
+			},
+		},
+	}
+	pk, err := Load[func(ctx context.Context) (int, error)](pgs)
+	assert.NoError(b, err)
+	fn, _ := pk.Get("normal")
+	ctx := context.Background()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = fn(ctx)
+	}
+}
+
+func testNormalCall(ctx context.Context) (int, error) {
+	return 123, nil
+}
+
+func BenchmarkFuncCallWithoutYaegi(b *testing.B) {
+	//BenchmarkFuncCallWithoutYaegi-12        1000000000               0.1256 ns/op          0 B/op          0 allocs/op
+	ctx := context.Background()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = testNormalCall(ctx)
+	}
+}
