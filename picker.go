@@ -146,11 +146,9 @@ func (p *pickerImpl[T]) wrapFunc(name string, t T) T {
 				}
 			}
 		}()
-		// 调用原始函数
 		results = reflect.ValueOf(t).Call(args)
 		return
-	}).Interface().(T) // 将返回的结果转换为原始类型 T
-
+	}).Interface().(T)
 }
 
 func (p *pickerImpl[T]) init(ps *Plugins) error {
