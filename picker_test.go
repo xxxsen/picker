@@ -55,7 +55,8 @@ func TestExecPlugin(t *testing.T) {
 			},
 			{
 				Name:     "p3",
-				Function: `func(ctx context.Context) {fmt.Printf("r u ok?\n")}`,
+				Define:   "a := 3.14",
+				Function: `func(ctx context.Context) {fmt.Printf("r u ok? value a:%f\n", a)}`,
 			},
 		},
 	}
