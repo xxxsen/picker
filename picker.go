@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"regexp"
 	"runtime/debug"
 	"strings"
 
@@ -19,6 +20,8 @@ var (
 		"context",
 		"fmt",
 	}
+	defaultFnNameValidator = regexp.MustCompile("^[a-zA-Z0-9_]+$")
+	defaultFnCodeValidator = regexp.MustCompile(`^\s*func\s*\(.*\).*`) //简单判断即可, 必须为 func(...) {} 这种类型, 不能带function name
 )
 
 type IPicker[T any] interface {
@@ -151,10 +154,15 @@ func (p *pickerImpl[T]) validateConfig(pc *PluginConfig) error {
 	if len(pc.Name) == 0 {
 		return fmt.Errorf("no plugin name found")
 	}
+	if !defaultFnNameValidator.MatchString(pc.Name) {
+		return fmt.Errorf("plugin name is invalid")
+	}
 	if len(pc.Function) == 0 {
 		return fmt.Errorf("no plugin function found")
 	}
-
+	if !defaultFnCodeValidator.MatchString(pc.Function) {
+		return fmt.Errorf("plugin function code is invalid, should be a func without func name")
+	}
 	return nil
 }
 
