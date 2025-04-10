@@ -1,4 +1,4 @@
-module picker
+module github.com/xxxsen/picker
 
 go 1.21
 
