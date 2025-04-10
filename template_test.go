@@ -10,7 +10,7 @@ func Test_buildTemplate(t *testing.T) {
 		Define:   []string{"var a = 1", "var b = 2"},
 		Function: "func(ctx context.Context, args interface{}) error {\n\t\tfmt.Println(\"hello world\")\n\t\treturn nil\n\t}",
 	}
-	got, err := buildPluginCode(args)
+	got, err := buildCode(args)
 	if err != nil {
 		t.Fatalf("buildPlugin() error = %v", err)
 	}

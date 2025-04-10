@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"runtime/debug"
 	"strings"
-	"time"
 
 	"github.com/traefik/yaegi/interp"
 	"github.com/traefik/yaegi/stdlib"
@@ -15,11 +14,13 @@ import (
 
 type IPicker[T any] interface {
 	Get(name string) (T, error)
+	List() []string
 }
 
 type pickerImpl[T any] struct {
-	i  *interp.Interpreter
-	ct IContainer
+	i   *interp.Interpreter
+	m   map[string]T
+	lst []string
 }
 
 func ParseData[T any](data []byte) (IPicker[T], error) {
@@ -28,8 +29,8 @@ func ParseData[T any](data []byte) (IPicker[T], error) {
 		return nil, err
 	}
 	pk := &pickerImpl[T]{
-		i:  interp.New(interp.Options{}),
-		ct: NewContainer(),
+		i: interp.New(interp.Options{}),
+		m: make(map[string]T),
 	}
 	pk.i.Use(stdlib.Symbols)
 	host := make(map[string]map[string]reflect.Value)
@@ -51,39 +52,51 @@ func ParseFile[T any](f string) (IPicker[T], error) {
 }
 
 func (p *pickerImpl[T]) init(ps *Plugins) error {
-	argslist, err := p.buildPluginTemplateArgs(ps)
-	if err != nil {
-		return fmt.Errorf("build template args failed, err:%w", err)
-	}
-	for _, item := range argslist {
-		if err := p.createPlugiuns(p.ct, item); err != nil {
-			return fmt.Errorf("create plugin failed, err:%w", err)
+	m := make(map[string]interface{}, len(ps.Plugins))
+	lst := make([]string, 0, len(ps.Plugins))
+	ct := asContainer(m)
+	for _, item := range ps.Plugins {
+		if err := p.createPlugins(ct, item); err != nil {
+			return fmt.Errorf("create plugin failed, name:%s, err:%w", item.Name, err)
 		}
+		lst = append(lst, item.Name)
 	}
+	for k, v := range m {
+		vt, ok := v.(T)
+		if !ok {
+			return fmt.Errorf("plugin:%s function type not match", k)
+		}
+		p.m[k] = vt
+	}
+	p.lst = lst
 	return nil
 }
 
-func (p *pickerImpl[T]) createPlugiuns(ct IContainer, args *pluginTpltArgs) (err error) {
+func (p *pickerImpl[T]) createPlugins(ct IContainer, plg *PluginConfig) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("create plugin panic: %v, stack:%s", r, string(debug.Stack()))
 		}
 	}()
-	code, err := buildPluginCode(args)
+	args, err := p.buildArgs(plg)
 	if err != nil {
-		return fmt.Errorf("build code failed, name:%s, err:%w", args.Name, err)
+		return fmt.Errorf("build template args failed, err:%w", err)
+	}
+	code, err := buildCode(args)
+	if err != nil {
+		return fmt.Errorf("build code failed, err:%w", err)
 	}
 	_, err = p.i.Eval(code)
 	if err != nil {
-		return fmt.Errorf("eval plugin code failed, name:%s, err:%w", args.Name, err)
+		return fmt.Errorf("eval plugin code failed, err:%w", err)
 	}
 	v, err := p.i.Eval(fmt.Sprintf("%s.%s", args.Package, "Register"))
 	if err != nil {
-		return fmt.Errorf("eval register func failed, name:%s, err:%w", args.Name, err)
+		return fmt.Errorf("eval register func failed, err:%w", err)
 	}
 	fn, ok := v.Interface().(func(IContainer) error)
 	if !ok {
-		return fmt.Errorf("register func type not match signature, name:%s", args.Name)
+		return fmt.Errorf("register func type not match signature")
 	}
 	if err := fn(ct); err != nil {
 		return fmt.Errorf("register func failed, err:%w", err)
@@ -91,19 +104,15 @@ func (p *pickerImpl[T]) createPlugiuns(ct IContainer, args *pluginTpltArgs) (err
 	return nil
 }
 
-func (p *pickerImpl[T]) buildPluginTemplateArgs(ps *Plugins) ([]*pluginTpltArgs, error) {
-	rs := make([]*pluginTpltArgs, 0, len(ps.Plugins))
-	for _, plg := range ps.Plugins {
-		args := &pluginTpltArgs{
-			Package:  fmt.Sprintf("picker_%s_%d", plg.Name, time.Now().Unix()),
-			Name:     plg.Name,
-			Import:   p.noEmptyLine(strings.Split(plg.Import, "\n")),
-			Define:   strings.Split(plg.Define, "\n"),
-			Function: plg.Function,
-		}
-		rs = append(rs, args)
+func (p *pickerImpl[T]) buildArgs(plg *PluginConfig) (*pluginTpltArgs, error) {
+	args := &pluginTpltArgs{
+		Package:  fmt.Sprintf("picker_%s", plg.Name),
+		Name:     plg.Name,
+		Import:   p.noEmptyLine(strings.Split(plg.Import, "\n")),
+		Define:   strings.Split(plg.Define, "\n"),
+		Function: plg.Function,
 	}
-	return rs, nil
+	return args, nil
 }
 
 func (p *pickerImpl[T]) noEmptyLine(in []string) []string {
@@ -117,14 +126,13 @@ func (p *pickerImpl[T]) noEmptyLine(in []string) []string {
 }
 
 func (p *pickerImpl[T]) Get(name string) (T, error) {
-	v, ok := p.ct.Get(name)
+	fn, ok := p.m[name]
 	if !ok {
-		var zero T
-		return zero, fmt.Errorf("plugin:%s not found", name)
+		return fn, fmt.Errorf("plugin:%s not found", name)
 	}
-	vt, ok := v.(T)
-	if !ok {
-		return vt, fmt.Errorf("invalid plugin type, name:%s", name)
-	}
-	return vt, nil
+	return fn, nil
+}
+
+func (p *pickerImpl[T]) List() []string {
+	return p.lst
 }

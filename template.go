@@ -30,7 +30,7 @@ var (
 	tplt = template.Must(template.New("plugin.template").Parse(pluginTemplate))
 )
 
-func buildPluginCode(args *pluginTpltArgs) (string, error) {
+func buildCode(args *pluginTpltArgs) (string, error) {
 	buf := bytes.Buffer{}
 	if err := tplt.Execute(&buf, args); err != nil {
 		return "", err

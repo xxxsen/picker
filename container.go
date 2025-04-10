@@ -4,7 +4,6 @@ import "fmt"
 
 type IContainer interface {
 	Register(name string, val interface{}) error
-	Get(name string) (interface{}, bool)
 }
 
 type containerImpl struct {
@@ -19,13 +18,8 @@ func (c *containerImpl) Register(name string, val interface{}) error {
 	return nil
 }
 
-func (c *containerImpl) Get(name string) (interface{}, bool) {
-	val, ok := c.m[name]
-	return val, ok
-}
-
-func NewContainer() IContainer {
+func asContainer(m map[string]interface{}) IContainer {
 	return &containerImpl{
-		m: make(map[string]interface{}),
+		m: m,
 	}
 }
