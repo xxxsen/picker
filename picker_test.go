@@ -149,3 +149,31 @@ func TestCustomObjectWithPkg(t *testing.T) {
 	t.Logf("in.V:%s", in.V)
 	assert.Equal(t, "hello world", in.V)
 }
+
+func TestWithSafeWrap(t *testing.T) {
+	pgs := &Plugins{
+		Plugins: []*PluginConfig{
+			{
+				Name:     "normal",
+				Function: `func(ctx context.Context) (string, error) {return "123", nil}`,
+			},
+			{
+				Name:     "panic",
+				Function: `func(ctx context.Context) (string, error) {panic(1)}`,
+			},
+		},
+	}
+	pk, err := Load[func(ctx context.Context) (string, error)](pgs,
+		WithSafeFuncWrap(true),
+	)
+	assert.NoError(t, err)
+	fn, _ := pk.Get("normal")
+	data, err := fn(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, "123", data)
+	fn, _ = pk.Get("panic")
+	data, err = fn(context.Background())
+	assert.Error(t, err)
+	t.Logf("panic err:%v", err)
+	assert.Equal(t, "", data)
+}

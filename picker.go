@@ -115,12 +115,42 @@ func ParseJsonFile[T any](f string, opts ...Option) (IPicker[T], error) {
 	return ParseData[T](raw, JsonDecoder, opts...)
 }
 
-func (p *pickerImpl[T]) wrapFunc(t T) T {
+func (p *pickerImpl[T]) wrapFunc(name string, t T) T {
 	if !p.c.safeWrap {
 		return t
 	}
-	//TODO: impl it
-	return t
+	funcType := reflect.TypeOf(t)
+	numOut := funcType.NumOut()
+	errKind := reflect.TypeOf((*error)(nil)).Elem()
+	errIndex := -1
+	for i := 0; i < numOut; i++ {
+		if funcType.Out(i).AssignableTo(errKind) {
+			errIndex = i
+			break
+		}
+	}
+	if errIndex < 0 { //没有err返回值, 捕获了也没卵用
+		return t
+	}
+	return reflect.MakeFunc(funcType, func(args []reflect.Value) (results []reflect.Value) {
+		defer func() {
+			if r := recover(); r != nil {
+				err := fmt.Errorf("panic recover from plugin:%s, recover:%v, stack:%s", name, r, string(debug.Stack()))
+				results = make([]reflect.Value, numOut)
+				for i := 0; i < numOut; i++ {
+					if funcType.Out(i).AssignableTo(errKind) {
+						results[i] = reflect.ValueOf(err)
+						continue
+					}
+					results[i] = reflect.Zero(funcType.Out(i))
+				}
+			}
+		}()
+		// 调用原始函数
+		results = reflect.ValueOf(t).Call(args)
+		return
+	}).Interface().(T) // 将返回的结果转换为原始类型 T
+
 }
 
 func (p *pickerImpl[T]) init(ps *Plugins) error {
@@ -141,7 +171,7 @@ func (p *pickerImpl[T]) init(ps *Plugins) error {
 		if !ok {
 			return fmt.Errorf("plugin:%s function type not match", k)
 		}
-		p.m[k] = p.wrapFunc(vt)
+		p.m[k] = p.wrapFunc(k, vt)
 	}
 	p.lst = lst
 	return nil
