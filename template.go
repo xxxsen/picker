@@ -13,7 +13,7 @@ import (
 {{- end }}
 )
 
-func Fn{{.Name}}() func(ctx context.Context, args interface{}) error {
+func Fn{{.Name}}() interface{} {
 	{{- range .Define }}
 	{{.}}
 	{{- end }}

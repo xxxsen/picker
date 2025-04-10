@@ -1,14 +1,14 @@
 package picker
 
 type PluginConfig struct {
-	Name     string `yaml:"name"`
-	Import   string `yaml:"import"`
-	Define   string `yaml:"define"`
-	Function string `yaml:"function"`
+	Name     string `yaml:"name" json:"name"`
+	Import   string `yaml:"import" json:"import"`
+	Define   string `yaml:"define" json:"define"`
+	Function string `yaml:"function" json:"function"`
 }
 
 type Plugins struct {
-	Plugins []*PluginConfig `yaml:"plugins"`
+	Plugins []*PluginConfig `yaml:"plugins" json:"plugins"`
 }
 
 type pluginTpltArgs struct {

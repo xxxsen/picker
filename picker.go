@@ -32,10 +32,15 @@ type pickerImpl[T any] struct {
 	lst []string
 }
 
-func ParseData[T any](data []byte) (IPicker[T], error) {
-	p := &Plugins{}
-	if err := yaml.Unmarshal(data, p); err != nil {
-		return nil, err
+func checkIsTemplateTypeFunction[T any]() bool {
+	var v T
+	t := reflect.TypeOf(v)
+	return t.Kind() == reflect.Func
+}
+
+func Load[T any](ps *Plugins) (IPicker[T], error) {
+	if !checkIsTemplateTypeFunction[T]() {
+		return nil, fmt.Errorf("template type should be function")
 	}
 	pk := &pickerImpl[T]{
 		i: interp.New(interp.Options{}),
@@ -46,10 +51,18 @@ func ParseData[T any](data []byte) (IPicker[T], error) {
 	host["host/host"] = make(map[string]reflect.Value)
 	host["host/host"]["IContainer"] = reflect.ValueOf((*IContainer)(nil))
 	pk.i.Use(host)
-	if err := pk.init(p); err != nil {
+	if err := pk.init(ps); err != nil {
 		return nil, err
 	}
 	return pk, nil
+}
+
+func ParseData[T any](data []byte) (IPicker[T], error) {
+	ps := &Plugins{}
+	if err := yaml.Unmarshal(data, ps); err != nil {
+		return nil, err
+	}
+	return Load[T](ps)
 }
 
 func ParseFile[T any](f string) (IPicker[T], error) {
