@@ -200,6 +200,33 @@ func TestGlobalImport(t *testing.T) {
 	assert.Equal(t, "hello world", string(data))
 }
 
+func TestClosure(t *testing.T) {
+	pgs := &Plugins{
+		Import: []string{"io", "bytes"},
+		Plugins: []*PluginConfig{
+			{
+				Name: "normal",
+				Define: `
+					var str = "hello world"
+					cb := func(ctx context.Context) []byte {
+						return []byte(str)
+					}
+				`,
+				Function: `func(ctx context.Context) io.Reader {
+					 return bytes.NewReader(cb(ctx))
+				}`,
+			},
+		},
+	}
+	pk, err := Load[func(ctx context.Context) io.Reader](pgs)
+	assert.NoError(t, err)
+	fn, _ := pk.Get("normal")
+	rd := fn(context.Background())
+	data, err := io.ReadAll(rd)
+	assert.NoError(t, err)
+	assert.Equal(t, "hello world", string(data))
+}
+
 func BenchmarkFuncCallWithYaegi(b *testing.B) {
 	//BenchmarkFuncCallWithYaegi-12            1000000              1728 ns/op             552 B/op         15 allocs/op
 	pgs := &Plugins{

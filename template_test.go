@@ -7,7 +7,7 @@ func Test_buildTemplate(t *testing.T) {
 		Package:  "testpkg",
 		Name:     "TestPlugin",
 		Import:   []string{"context", "fmt"},
-		Define:   []string{"var a = 1", "var b = 2"},
+		Define:   "var a = 1\nvar b = 2",
 		Function: "func(ctx context.Context, args interface{}) error {\n\t\tfmt.Println(\"hello world\")\n\t\treturn nil\n\t}",
 	}
 	got, err := buildCode(args)

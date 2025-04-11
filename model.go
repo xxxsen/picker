@@ -16,6 +16,6 @@ type pluginTpltArgs struct {
 	Package  string
 	Name     string
 	Import   []string
-	Define   []string
+	Define   string
 	Function string
 }

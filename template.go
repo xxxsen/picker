@@ -14,9 +14,8 @@ import (
 )
 
 func Fn{{.Name}}() interface{} {
-	{{- range .Define }}
-	{{.}}
-	{{- end }}
+	{{ .Define }}
+
 	return {{.Function}}
 }
 

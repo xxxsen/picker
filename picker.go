@@ -212,7 +212,7 @@ func (p *pickerImpl[T]) buildArgs(plg *PluginConfig, extraImport []string) (*plu
 		Package:  fmt.Sprintf("picker_%s", plg.Name),
 		Name:     plg.Name,
 		Import:   p.withSysImport(p.removeEmpty(plg.Import), p.removeEmpty(extraImport)),
-		Define:   p.removeEmpty(strings.Split(plg.Define, "\n")),
+		Define:   plg.Define,
 		Function: plg.Function,
 	}
 	return args, nil
