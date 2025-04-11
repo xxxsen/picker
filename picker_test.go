@@ -2,6 +2,7 @@ package picker
 
 import (
 	"context"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,8 +12,8 @@ var (
 	testYamlFile = `
 plugins:
   - name: testplugin
-    import: |
-      fmt
+    import:
+      - fmt
     define: |
       var a = 1
       var b = 2
@@ -20,7 +21,7 @@ plugins:
       func(ctx context.Context, args interface{}) error {
         fmt.Printf("hello world, a:%d, b:%d\n", a, b)
         return nil
-      } 		
+      }
 `
 )
 
@@ -75,7 +76,7 @@ func TestJson(t *testing.T) {
 		"plugins": [
 			{
 				"name": "testjson",
-				"import": "fmt",
+				"import": ["fmt"],
 				"define": "var a = 1\nvar b = 2",
 				"function": "func(ctx context.Context, args interface{}) error {fmt.Printf(\"hello json\")\n\treturn nil\n}"
 			}
@@ -128,7 +129,7 @@ func TestCustomObjectWithPkg(t *testing.T) {
 		Plugins: []*PluginConfig{
 			{
 				Name:     "p1",
-				Import:   "cstpkg",
+				Import:   []string{"cstpkg"},
 				Function: `func(ctx context.Context, in *cstpkg.TestData) {in.V = "hello world"}`,
 			},
 		},
@@ -176,6 +177,27 @@ func TestWithSafeWrap(t *testing.T) {
 	assert.Error(t, err)
 	t.Logf("panic err:%v", err)
 	assert.Equal(t, "", data)
+}
+
+func TestGlobalImport(t *testing.T) {
+	pgs := &Plugins{
+		Import: []string{"io", "bytes"},
+		Plugins: []*PluginConfig{
+			{
+				Name: "normal",
+				Function: `func(ctx context.Context) io.Reader {
+					 return bytes.NewReader([]byte("hello world"))
+				}`,
+			},
+		},
+	}
+	pk, err := Load[func(ctx context.Context) io.Reader](pgs)
+	assert.NoError(t, err)
+	fn, _ := pk.Get("normal")
+	rd := fn(context.Background())
+	data, err := io.ReadAll(rd)
+	assert.NoError(t, err)
+	assert.Equal(t, "hello world", string(data))
 }
 
 func BenchmarkFuncCallWithYaegi(b *testing.B) {

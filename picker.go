@@ -159,7 +159,7 @@ func (p *pickerImpl[T]) init(ps *Plugins) error {
 		if err := p.validateConfig(item); err != nil {
 			return fmt.Errorf("validate plugin config failed, idx:%d, name:%s, err:%w", idx, item.Name, err)
 		}
-		if err := p.createPlugin(ct, item); err != nil {
+		if err := p.createPlugin(ps, ct, item); err != nil {
 			return fmt.Errorf("create plugin failed, name:%s, err:%w", item.Name, err)
 		}
 		lst = append(lst, item.Name)
@@ -175,13 +175,13 @@ func (p *pickerImpl[T]) init(ps *Plugins) error {
 	return nil
 }
 
-func (p *pickerImpl[T]) createPlugin(ct IContainer, plg *PluginConfig) (err error) {
+func (p *pickerImpl[T]) createPlugin(ps *Plugins, ct IContainer, plg *PluginConfig) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("create plugin panic: %v, stack:%s", r, string(debug.Stack()))
 		}
 	}()
-	args, err := p.buildArgs(plg)
+	args, err := p.buildArgs(plg, ps.Import)
 	if err != nil {
 		return fmt.Errorf("build template args failed, err:%w", err)
 	}
@@ -207,21 +207,23 @@ func (p *pickerImpl[T]) createPlugin(ct IContainer, plg *PluginConfig) (err erro
 	return nil
 }
 
-func (p *pickerImpl[T]) buildArgs(plg *PluginConfig) (*pluginTpltArgs, error) {
+func (p *pickerImpl[T]) buildArgs(plg *PluginConfig, extraImport []string) (*pluginTpltArgs, error) {
 	args := &pluginTpltArgs{
 		Package:  fmt.Sprintf("picker_%s", plg.Name),
 		Name:     plg.Name,
-		Import:   p.withSysImport(p.asLine(plg.Import)),
-		Define:   p.asLine(plg.Define),
+		Import:   p.withSysImport(p.removeEmpty(plg.Import), p.removeEmpty(extraImport)),
+		Define:   p.removeEmpty(strings.Split(plg.Define, "\n")),
 		Function: plg.Function,
 	}
 	return args, nil
 }
 
-func (p *pickerImpl[T]) withSysImport(in []string) []string {
-	rs := make([]string, 0, len(in)+len(defaultSysImport))
+func (p *pickerImpl[T]) withSysImport(items ...[]string) []string {
+	rs := make([]string, 0, len(defaultSysImport)+8)
 	rs = append(rs, defaultSysImport...)
-	rs = append(rs, in...)
+	for _, imports := range items {
+		rs = append(rs, imports...)
+	}
 	return funk.Uniq(rs).([]string)
 }
 
@@ -241,8 +243,7 @@ func (p *pickerImpl[T]) validateConfig(pc *PluginConfig) error {
 	return nil
 }
 
-func (p *pickerImpl[T]) asLine(in string) []string {
-	lines := strings.Split(strings.TrimSpace(in), "\n")
+func (p *pickerImpl[T]) removeEmpty(lines []string) []string {
 	rs := make([]string, 0, len(lines))
 	for _, line := range lines {
 		line = strings.TrimSpace(line)

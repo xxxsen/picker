@@ -15,7 +15,7 @@ func main() {
 			},
 			{
 				Name:     "p2",
-                Import:   "fmt", // 导入一个自定义包
+				Import:   "fmt", // 导入一个自定义包
 				Function: `func(ctx context.Context) {fmt.Printf("test\n")}`,
 			},
 			{
