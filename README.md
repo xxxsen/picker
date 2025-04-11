@@ -5,6 +5,8 @@ emmm, 包装了下yaegi, 方便动态执行golang函数...
 
 ## 使用方式
 
+一个简单的例子, 更多的例子, 可以参考`picker_test.go`文件
+
 ```golang
 func main() {
 	pgs := &Plugins{
