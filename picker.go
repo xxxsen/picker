@@ -167,7 +167,8 @@ func (p *pickerImpl[T]) init(ps *Plugins) error {
 	for k, v := range m {
 		vt, ok := v.(T)
 		if !ok {
-			return fmt.Errorf("plugin:%s function type not match", k)
+			var t T
+			return fmt.Errorf("plugin:%s function type not match, need:%s, current_type:%s", k, p.inspectFunc(t), p.inspectFunc(v))
 		}
 		p.m[k] = p.wrapFunc(k, vt)
 	}
@@ -205,6 +206,16 @@ func (p *pickerImpl[T]) createPlugin(ps *Plugins, ct IContainer, plg *PluginConf
 		return fmt.Errorf("register func failed, err:%w", err)
 	}
 	return nil
+}
+
+func (p *pickerImpl[T]) inspectFunc(fn interface{}) string {
+	funcType := reflect.TypeOf(fn)
+
+	if funcType.Kind() != reflect.Func {
+		return "signature: non-func type"
+	}
+
+	return fmt.Sprintf("signature: %s", funcType)
 }
 
 func (p *pickerImpl[T]) buildArgs(plg *PluginConfig, extraImport []string) (*pluginTpltArgs, error) {
