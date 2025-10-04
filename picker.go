@@ -91,7 +91,12 @@ func buildInjectObjs(objs map[string]interface{}) (map[string]map[string]reflect
 	return ct, nil
 }
 
+// Derepcated: use Parse instead
 func ParseData[T any](data []byte, dec DecoderFunc, opts ...Option) (IPicker[T], error) {
+	return Parse[T](data, dec, opts...)
+}
+
+func Parse[T any](data []byte, dec DecoderFunc, opts ...Option) (IPicker[T], error) {
 	ps := &Plugins{}
 	if err := dec(data, ps); err != nil {
 		return nil, fmt.Errorf("decode data failed, err:%w", err)
@@ -99,20 +104,30 @@ func ParseData[T any](data []byte, dec DecoderFunc, opts ...Option) (IPicker[T],
 	return Load[T](ps, opts...)
 }
 
+// Deprecated: use ParseFile instead
 func ParseYamlFile[T any](f string, opts ...Option) (IPicker[T], error) {
 	raw, err := os.ReadFile(f)
 	if err != nil {
 		return nil, err
 	}
-	return ParseData[T](raw, YamlDecoder, opts...)
+	return Parse[T](raw, YamlDecoder, opts...)
 }
 
+// Deprecated: use ParseFile instead
 func ParseJsonFile[T any](f string, opts ...Option) (IPicker[T], error) {
 	raw, err := os.ReadFile(f)
 	if err != nil {
 		return nil, err
 	}
-	return ParseData[T](raw, JsonDecoder, opts...)
+	return Parse[T](raw, JsonDecoder, opts...)
+}
+
+func ParseFile[T any](f string, dec DecoderFunc, opts ...Option) (IPicker[T], error) {
+	raw, err := os.ReadFile(f)
+	if err != nil {
+		return nil, err
+	}
+	return Parse[T](raw, dec, opts...)
 }
 
 func (p *pickerImpl[T]) wrapFunc(name string, t T) T {

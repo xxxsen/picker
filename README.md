@@ -1,39 +1,52 @@
 picker
 ===
 
-emmm, 包装了下yaegi, 方便动态执行golang函数...
+一个基于 [yaegi](https://github.com/traefik/yaegi) 的轻量插件容器，支持在运行时按配置加载并执行 Go 函数。
 
-## 使用方式
+目前内置 YAML / JSON / TOML 三种配置格式。推荐在 TOML 中使用 `'''` 多行字面量存放函数体，可避免 `\n` 这类转义在解析过程中被处理。
 
-一个简单的例子, 更多的例子, 可以参考`picker_test.go`文件
+## Quick Start
 
-```golang
+更多示例见 `picker_test.go`。
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+
+    "github.com/xxxsen/picker"
+)
+
 func main() {
-	pgs := &Plugins{
-		Plugins: []*PluginConfig{
-			{
-				Name:     "p1", //单纯执行代码
-				Function: `func(ctx context.Context) {fmt.Printf("hello world\n")}`,
-			},
-			{
-				Name:     "p2",
-				Import:   "fmt", // 导入一个自定义包
-				Function: `func(ctx context.Context) {fmt.Printf("test\n")}`,
-			},
-			{
-				Name:     "p3",
-				Define:   "a := 3.14", //定义相关的变量, 之后可以被Function引用, 通常用于代码执行前的初始化
-				Function: `func(ctx context.Context) {fmt.Printf("r u ok? value a:%f\n", a)}`,
-			},
-		},
-	}
-	pk, _ := Load[func(ctx context.Context)](pgs)
-	for _, name := range pk.List() { //按插件定义的顺序遍历插件列表
-		fn, _ := pk.Get(name) //从容器获取插件func并进行执行
-		fn(context.Background())
-	}
+    pgs := &picker.Plugins{
+        Plugins: []*picker.PluginConfig{
+            {
+                Name:     "p1",
+                Function: `func(ctx context.Context) {fmt.Println("hello world")}`,
+            },
+            {
+                Name:     "p2",
+                Import:   []string{"fmt"},
+                Function: `func(ctx context.Context) {fmt.Println("hello again")}`,
+            },
+            {
+                Name:   "p3",
+                Define: "a := 3.14",
+                Function: `func(ctx context.Context) {fmt.Printf("value a:%f\n", a)}`,
+            },
+        },
+    }
+    pk, err := picker.Load[func(context.Context)](pgs)
+    if err != nil {
+        log.Fatalf("load plugins failed: %v", err)
+    }
+    for _, name := range pk.List() {
+        fn, _ := pk.Get(name)
+        fn(context.Background())
+    }
 }
 ```
 
-**NOTE: 函数签名没有限制一定是几个参数, 可以根据需要自定义, 但是需要确保函数签名跟泛型参数的类型是一致的。**
-
+> 提示：泛型参数决定了插件函数签名，确保配置中的函数类型与之匹配即可；参数数量、类型都可以自行定义。
