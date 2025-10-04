@@ -23,6 +23,21 @@ plugins:
         return nil
       }
 `
+	testTomlFile = `
+[[plugins]]
+name = "testtoml"
+import = ["fmt"]
+define = '''
+var a = 1
+var b = 2
+'''
+function = '''
+func(ctx context.Context, args interface{}) error {
+    fmt.Printf("hello world, a:%d, b:%d\n", a, b)
+    return nil
+}
+'''
+`
 )
 
 func TestParseData(t *testing.T) {
@@ -86,6 +101,19 @@ func TestJson(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, pk)
 	fn, err := pk.Get("testjson")
+	assert.NoError(t, err)
+	err = fn(context.Background(), nil)
+	assert.NoError(t, err)
+	fns := pk.List()
+	t.Logf("fns:%v", fns)
+	assert.Equal(t, 1, len(fns))
+}
+
+func TestToml(t *testing.T) {
+	pk, err := ParseData[func(ctx context.Context, args interface{}) error]([]byte(testTomlFile), TomlDecoder)
+	assert.NoError(t, err)
+	assert.NotNil(t, pk)
+	fn, err := pk.Get("testtoml")
 	assert.NoError(t, err)
 	err = fn(context.Background(), nil)
 	assert.NoError(t, err)

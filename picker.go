@@ -115,6 +115,14 @@ func ParseJsonFile[T any](f string, opts ...Option) (IPicker[T], error) {
 	return ParseData[T](raw, JsonDecoder, opts...)
 }
 
+func ParseTomlFile[T any](f string, opts ...Option) (IPicker[T], error) {
+	raw, err := os.ReadFile(f)
+	if err != nil {
+		return nil, err
+	}
+	return ParseData[T](raw, TomlDecoder, opts...)
+}
+
 func (p *pickerImpl[T]) wrapFunc(name string, t T) T {
 	if !p.c.safeWrap {
 		return t
