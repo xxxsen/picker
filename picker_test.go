@@ -41,7 +41,7 @@ func(ctx context.Context, args interface{}) error {
 )
 
 func TestParseData(t *testing.T) {
-	pk, err := ParseData[func(ctx context.Context, args interface{}) error]([]byte(testYamlFile), YamlDecoder)
+	pk, err := Parse[func(ctx context.Context, args interface{}) error]([]byte(testYamlFile), YamlDecoder)
 	assert.NoError(t, err)
 	assert.NotNil(t, pk)
 	fn, err := pk.Get("testplugin")
@@ -97,7 +97,7 @@ func TestJson(t *testing.T) {
 			}
 		]
 	}`
-	pk, err := ParseData[func(ctx context.Context, args interface{}) error]([]byte(code), JsonDecoder)
+	pk, err := Parse[func(ctx context.Context, args interface{}) error]([]byte(code), JsonDecoder)
 	assert.NoError(t, err)
 	assert.NotNil(t, pk)
 	fn, err := pk.Get("testjson")
@@ -110,7 +110,7 @@ func TestJson(t *testing.T) {
 }
 
 func TestToml(t *testing.T) {
-	pk, err := ParseData[func(ctx context.Context, args interface{}) error]([]byte(testTomlFile), TomlDecoder)
+	pk, err := Parse[func(ctx context.Context, args interface{}) error]([]byte(testTomlFile), TomlDecoder)
 	assert.NoError(t, err)
 	assert.NotNil(t, pk)
 	fn, err := pk.Get("testtoml")
